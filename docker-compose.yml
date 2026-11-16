@@ -1,0 +1,27 @@
+
+version: "3.6"
+
+services:
+  tasks-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: tasks-api:1.0.0
+
+    restart: unless-stopped
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+
+      ConnectionStrings__DefaultConnection: "Data Source=/app/data/tasks.db"
+
+    ports:
+      - "127.0.0.1:5118:8080"
+
+    volumes:
+      - tasks-api-data:/app/data
+
+volumes:
+  tasks-api-data:
