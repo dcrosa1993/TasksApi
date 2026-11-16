@@ -13,15 +13,39 @@ namespace TasksApi.Api.Controllers;
 public sealed class TasksController(AppDbContext dbContext) : ControllerBase
 {
     // GET: api/tasks
+
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<TaskResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<TaskResponse>>> GetAll(
+    [ProducesResponseType(typeof(PaginatedTasksResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PaginatedTasksResponse>> GetAll(
+        [FromQuery] GetTasksRequest request,
         CancellationToken cancellationToken
     )
     {
-        var tasks = await dbContext
-            .Tasks.AsNoTracking()
+        IQueryable<TaskItem> query = dbContext.Tasks.AsNoTracking();
+
+        // Filter by status
+        if (request.Status.HasValue)
+        {
+            query = query.Where(task => task.Status == request.Status.Value);
+        }
+
+        // Filter by responsible
+        if (!string.IsNullOrWhiteSpace(request.Responsible))
+        {
+            var responsible = request.Responsible.Trim();
+
+            query = query.Where(task => task.Responsible == responsible);
+        }
+
+        // Count filtered records before pagination
+        var totalCount = await query.LongCountAsync(cancellationToken);
+
+        // Apply pagination
+        var items = await query
             .OrderBy(task => task.Id)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
             .Select(task => new TaskResponse(
                 task.Id,
                 task.Title,
@@ -32,7 +56,17 @@ public sealed class TasksController(AppDbContext dbContext) : ControllerBase
             ))
             .ToListAsync(cancellationToken);
 
-        return Ok(tasks);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize);
+
+        return Ok(
+            new PaginatedTasksResponse(
+                items,
+                request.Page,
+                request.PageSize,
+                totalCount,
+                totalPages
+            )
+        );
     }
 
     // GET: api/tasks/{id}
