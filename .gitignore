@@ -71,6 +71,11 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
+# Local SQLite database
+src/TasksApi.Api/tasks.db
+src/TasksApi.Api/tasks.db-shm
+src/TasksApi.Api/tasks.db-wal
+
 # StyleCop
 StyleCopReport.xml
 
